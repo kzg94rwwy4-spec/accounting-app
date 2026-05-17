@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>个人记账 · pro版</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💰</text></svg>">
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        /* 背景图 + 遮罩 */
+        body {
+            background: url('https://images.unsplash.com/photo-1557683316-973673baf926?w=1600&q=80') no-repeat center center fixed;
+            background-size: cover;
+            font-family: 'Inter', sans-serif;
+            padding: 24px 20px;
+            position: relative;
+            min-height: 100vh;
+        }
+
+        body::before {
+            content: "";
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.4);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .app-container {
+            max-width: 580px;
+            margin: 0 auto;
+            position: relative;
+            z-index: 1;
+        }
+
+        .brand-header { margin-bottom: 24px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; }
+        .brand-header h1 { font-size: 1.85rem; font-weight: 600; background: linear-gradient(135deg, #ffffff, #e0eafc); background-clip: text; -webkit-background-clip: text; color: transparent; text-shadow: 0 1px 2px rgba(0,0,0,0.1); }
+        .user-area { display: flex; align-items: center; gap: 12px; }
+        .login-btn, .logout-btn { background: rgba(255,255,255,0.85); backdrop-filter: blur(8px); border: none; padding: 8px 18px; border-radius: 40px; font-size: 0.85rem; font-weight: 500; color: #1e3a4d; cursor: pointer; transition: 0.2s; }
+        .login-btn:hover, .logout-btn:hover { background: rgba(255,255,255,0.95); transform: translateY(-1px); }
+        .username-display { font-size: 0.85rem; background: rgba(255,255,255,0.85); backdrop-filter: blur(8px); padding: 6px 12px; border-radius: 40px; color: #1e3a4d; font-weight: 500; }
+        
+        .balance-card { background: linear-gradient(125deg, #1e3a4d 0%, #0f2c3b 100%); border-radius: 36px; padding: 24px 28px; margin-bottom: 24px; color: white; box-shadow: 0 20px 30px -12px rgba(0, 0, 0, 0.3); }
+        .balance-label { font-size: 0.85rem; opacity: 0.8; margin-bottom: 8px; }
+        .balance-amount { font-size: 2.6rem; font-weight: 700; margin-bottom: 20px; }
+        .stats-row { display: flex; gap: 20px; border-top: 1px solid rgba(255,255,255,0.15); padding-top: 18px; }
+        .stat-item { flex: 1; }
+        .stat-label { font-size: 0.75rem; opacity: 0.7; margin-bottom: 6px; }
+        .stat-number { font-size: 1.35rem; font-weight: 700; }
+        .income-num { color: #a3e9b4; }
+        .expense-num { color: #ffb3a8; }
+        
+        .card { background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(8px); border-radius: 28px; padding: 22px 24px; margin-bottom: 24px; box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1); border: 1px solid rgba(255,255,255,0.5); }
+        .section-title { font-weight: 600; font-size: 1.2rem; margin-bottom: 18px; display: flex; align-items: center; gap: 8px; color: #1f3b4c; }
+        .section-title i { color: #3b82f6; }
+        .form-grid { display: flex; flex-direction: column; gap: 14px; }
+        .input-row { display: flex; flex-wrap: wrap; gap: 12px; }
+        .input-group { flex: 1; min-width: 120px; }
+        .input-group label { display: block; font-size: 0.7rem; font-weight: 500; color: #2c4c6e; margin-bottom: 6px; }
+        input, select { width: 100%; padding: 12px 14px; border-radius: 20px; border: 1.5px solid #e2e8f0; font-family: 'Inter', monospace; font-size: 0.9rem; outline: none; background: #ffffff; }
+        input:focus, select:focus { border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59,130,246,0.15); }
+        .add-btn { background: #2d5f7e; border: none; padding: 12px; border-radius: 32px; font-weight: 600; color: white; cursor: pointer; width: 100%; margin-top: 8px; transition: 0.2s; }
+        .add-btn:hover { background: #1f4a63; transform: translateY(-1px); }
+        .records-list { list-style: none; display: flex; flex-direction: column; gap: 12px; max-height: 380px; overflow-y: auto; }
+        .record-item { background: white; border-radius: 24px; padding: 14px 18px; display: flex; justify-content: space-between; align-items: center; border: 1px solid #eef2f8; box-shadow: 0 2px 6px rgba(0,0,0,0.05); }
+        .record-info { flex: 1; }
+        .record-desc { font-weight: 600; margin-bottom: 6px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+        .record-category { font-size: 0.7rem; background: #f0f4fa; padding: 3px 10px; border-radius: 40px; color: #2c4c6e; }
+        .record-date { font-size: 0.7rem; color: #7a8ea8; }
+        .record-amount { font-weight: 700; font-size: 1.25rem; margin-right: 12px; }
+        .income-text { color: #2b9348; }
+        .expense-text { color: #d62828; }
+        .delete-btn { background: #fee9e9; border: none; width: 36px; height: 36px; border-radius: 30px; color: #b91c1c; cursor: pointer; transition: 0.2s; }
+        .delete-btn:hover { background: #fed7d7; transform: scale(1.02); }
+        .empty-state { text-align: center; padding: 48px 24px; color: #5a6e8a; }
+        .footer-note { text-align: center; font-size: 0.7rem; color: #2c4c6e; background: rgba(255,255,255,0.6); display: inline-block; width: auto; margin: 16px auto 0; padding: 6px 16px; border-radius: 40px; backdrop-filter: blur(4px); }
+        .chart-card { padding: 20px; }
+        #trendChart { height: 260px; width: 100%; }
+        
+        /* 登录浮层样式 */
+        .login-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.5); backdrop-filter: blur(6px); display: flex; align-items: center; justify-content: center; z-index: 1000; }
+        .login-card { position: relative; background: rgba(255, 255, 255, 0.98); border-radius: 48px; padding: 40px 32px; width: 90%; max-width: 400px; box-shadow: 0 30px 50px rgba(0, 0, 0, 0.3); text-align: center; }
+        .close-icon { position: absolute; top: 20px; right: 24px; font-size: 28px; cursor: pointer; color: #8ba0bc; transition: 0.2s; line-height: 1; }
+        .close-icon:hover { color: #1e293b; }
+        .login-card h2 { font-size: 28px; font-weight: 600; margin-bottom: 28px; background: linear-gradient(135deg, #1e3a4d, #2d5f7e); background-clip: text; -webkit-background-clip: text; color: transparent; }
+        .login-card input { width: 100%; padding: 14px 18px; margin-bottom: 18px; border: 1.5px solid #e2e8f0; border-radius: 40px; font-size: 1rem; background: #ffffff; transition: all 0.2s; outline: none; }
+        .login-card input:focus { border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59,130,246,0.15); }
+        .login-card button { width: 100%; padding: 14px; background: linear-gradient(105deg, #2d5f7e, #1f4a63); border: none; border-radius: 40px; color: white; font-weight: 600; font-size: 1rem; cursor: pointer; transition: all 0.2s; margin-bottom: 16px; }
+        .login-card button:hover { transform: translateY(-1px); box-shadow: 0 8px 20px rgba(0,0,0,0.2); background: linear-gradient(105deg, #1f4a63, #123b4f); }
+        .switch-mode { text-align: center; color: #3b82f6; cursor: pointer; font-size: 0.85rem; font-weight: 500; }
+        .switch-mode:hover { color: #1d4ed8; text-decoration: underline; }
+        #loginMessage { margin-top: 16px; font-size: 0.8rem; color: #ef4444; }
+        .delete-account-btn { background: rgba(254, 226, 226, 0.9); border: none; padding: 6px 14px; border-radius: 40px; font-size: 0.75rem; font-weight: 500; color: #b91c1c; cursor: pointer; transition: 0.2s; }
+        .delete-account-btn:hover { background: #fecaca; color: #991b1b; }
+        .filter-bar { display: flex; gap: 12px; margin-bottom: 16px; align-items: center; }
+        .filter-bar select { flex: 1; background: white; }
+        .filter-bar button { background: rgba(255,255,255,0.8); backdrop-filter: blur(4px); border: none; padding: 10px 16px; border-radius: 30px; cursor: pointer; transition: 0.2s; }
+        .filter-bar button:hover { background: rgba(255,255,255,0.95); }
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+<div id="mainApp" class="app-container">
+    <div class="brand-header">
+        <h1><i class="fas fa-book-open"></i> 个人记账</h1>
+        <div class="user-area" id="userArea"><button id="loginBtn" class="login-btn">登录</button></div>
+    </div>
+    <div class="balance-card">
+        <div class="balance-label">总资产 (余额)</div>
+        <div class="balance-amount" id="totalBalance">¥ 0.00</div>
+        <div class="stats-row">
+            <div class="stat-item"><div class="stat-label"><i class="fas fa-arrow-up"></i> 总收入</div><div class="stat-number income-num" id="totalIncome">¥ 0</div></div>
+            <div class="stat-item"><div class="stat-label"><i class="fas fa-arrow-down"></i> 总支出</div><div class="stat-number expense-num" id="totalExpense">¥ 0</div></div>
+        </div>
+    </div>
+    <div class="card chart-card"><div class="section-title"><i class="fas fa-chart-line"></i> <span>月度收支趋势</span></div><div id="trendChart"></div></div>
+    <div class="card">
+        <div class="section-title"><i class="fas fa-plus-circle"></i> <span>记一笔</span></div>
+        <div class="form-grid">
+            <div class="input-row">
+                <div class="input-group" style="flex:2;"><label>📝 描述</label><input type="text" id="descInput" placeholder="例：午餐 / 工资"></div>
+                <div class="input-group" style="flex:1;"><label>💰 金额</label><input type="number" id="amountInput" placeholder="0.00" step="0.01" autocomplete="off" autocomplete="new-password" readonly onfocus="this.removeAttribute('readonly')"></div>
+            </div>
+            <div class="input-row">
+                <div class="input-group"><label>📂 类型</label><select id="typeSelect"><option value="expense">💸 支出</option><option value="income">💵 收入</option></select></div>
+                <div class="input-group"><label>🗂️ 分类</label><select id="categorySelect"></select></div>
+                <div class="input-group"><label>📅 日期</label><input type="date" id="dateInput"></div>
+            </div>
+            <button class="add-btn" id="addRecordBtn"><i class="fas fa-check-circle"></i> 添加记录</button>
+        </div>
+    </div>
+    <div class="card">
+        <div class="section-title"><i class="fas fa-list-ul"></i> <span>交易流水</span></div>
+        <div class="filter-bar"><select id="filterCategory"><option value="">全部分类</option></select><button id="refreshBtn"><i class="fas fa-sync-alt"></i> 刷新</button></div>
+        <ul class="records-list" id="recordsList"><li class="empty-state">请先登录以查看数据</li></ul>
+    </div>
+   
+</div>
+<div id="loginOverlay" class="login-overlay hidden">
+    <div class="login-card">
+        <div class="close-icon" id="closeLoginBtn">&times;</div>
+        <h2 id="formTitle">登录</h2>
+        <input type="tel" id="loginUsername" placeholder="手机号" autocomplete="off">
+        <input type="password" id="loginPassword" placeholder="密码">
+        <div id="passwordHint" style="font-size:0.7rem; color:#6c757d; margin-top:-10px; margin-bottom:16px; text-align:left;"></div>
+        <button id="submitBtn">登录</button>
+        <div class="switch-mode" id="switchMode">没有账号？立即注册</div>
+        <div id="loginMessage"></div>
+    </div>
+</div>
+
+<script>
+    // 此处 JavaScript 代码与之前完全一致（功能不变），为保持完整，复制之前的全部脚本。
+    // 为节省篇幅，请确保脚本部分与上一个回答中相同。实际使用时，请将完整的 JS 代码粘贴在此。
+    // 由于浏览器限制，这里不再重复，您可以直接从上一个完整回答中复制 script 块。
+    // 如果您需要我提供包含完整 JS 的最终文件，请告知。
+    const API_BASE = 'http://localhost:3000/api';
+    let token = null;
+    let currentUser = null;
+    let categories = [];
+    let chartInstance = null;
+    let isProcessing = false;
+    let isLogin = true;
+
+    function setToken(t) { token = t; localStorage.setItem('token', t); }
+    function getToken() { return localStorage.getItem('token'); }
+    function clearToken() { localStorage.removeItem('token'); token = null; }
+
+    function checkPasswordStrength(pwd) {
+        const hasLower = /[a-z]/.test(pwd);
+        const hasUpper = /[A-Z]/.test(pwd);
+        const hasNumber = /\d/.test(pwd);
+        const hasSpecial = /[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]/.test(pwd);
+        const valid = hasLower && hasUpper && hasNumber && hasSpecial;
+        let message = '';
+        if (pwd.length === 0) message = '';
+        else if (!valid) message = '需包含：大写、小写、数字、特殊符号';
+        else message = '✓ 密码强度合格';
+        return { valid, message };
+    }
+
+    function updatePasswordHint() {
+        if (!isLogin) {
+            const pwd = document.getElementById('loginPassword').value;
+            const { message } = checkPasswordStrength(pwd);
+            const hintDiv = document.getElementById('passwordHint');
+            hintDiv.innerHTML = message;
+            hintDiv.style.color = message.includes('✓') ? '#2b9348' : '#d62828';
+        } else {
+            document.getElementById('passwordHint').innerHTML = '';
+        }
+    }
+
+    async function authFetch(url, options = {}) {
+        if (!token) { alert('请先登录'); throw new Error('No token'); }
+        const headers = options.headers || {};
+        headers['Authorization'] = `Bearer ${token}`;
+        const res = await fetch(url, { ...options, headers });
+        if (res.status === 401) { alert('登录已过期，请重新登录'); logout(); throw new Error('Unauthorized'); }
+        return res;
+    }
+
+    function closeLoginOverlay() {
+        document.getElementById('loginOverlay').classList.add('hidden');
+        isProcessing = false;
+        const submitBtn = document.getElementById('submitBtn');
+        submitBtn.disabled = false;
+        submitBtn.innerText = '登录';
+        document.getElementById('loginUsername').value = '';
+        document.getElementById('loginPassword').value = '';
+        document.getElementById('passwordHint').innerHTML = '';
+        document.getElementById('loginMessage').innerHTML = '';
+        isLogin = true;
+        document.getElementById('formTitle').innerText = '登录';
+        document.getElementById('switchMode').innerText = '没有账号？立即注册';
+        document.getElementById('loginPassword').removeEventListener('input', updatePasswordHint);
+    }
+
+    async function loadCategories() {
+        if (!token) return;
+        try {
+            const res = await authFetch(`${API_BASE}/categories`);
+            categories = await res.json();
+            const categorySelect = document.getElementById('categorySelect');
+            const filterCat = document.getElementById('filterCategory');
+            categorySelect.innerHTML = '<option value="">选择分类</option>';
+            filterCat.innerHTML = '<option value="">全部分类</option>';
+            categories.forEach(cat => {
+                const opt1 = document.createElement('option');
+                opt1.value = cat.id;
+                opt1.textContent = `${cat.name} (${cat.type === 'income' ? '收入' : '支出'})`;
+                categorySelect.appendChild(opt1);
+                const opt2 = document.createElement('option');
+                opt2.value = cat.id;
+                opt2.textContent = cat.name;
+                filterCat.appendChild(opt2);
+            });
+        } catch(e) { console.warn(e); }
+    }
+
+    async function loadRecords(categoryId = '') {
+        if (!token) { document.getElementById('recordsList').innerHTML = '<li class="empty-state">请先登录以查看数据</li>'; return; }
+        let url = `${API_BASE}/records`;
+        if (categoryId) url += `?category_id=${categoryId}`;
+        try {
+            const res = await authFetch(url);
+            const records = await res.json();
+            const listEl = document.getElementById('recordsList');
+            if (records.length === 0) { listEl.innerHTML = '<li class="empty-state"><i class="fas fa-receipt"></i><br/>暂无记录，添加一笔吧</li>'; return; }
+            let html = '';
+            for (let rec of records) {
+                const isIncome = rec.type === 'income';
+                const sign = isIncome ? '+' : '-';
+                const amountClass = isIncome ? 'income-text' : 'expense-text';
+                html += `<li class="record-item"><div class="record-info"><div class="record-desc"><span>${escapeHtml(rec.description)}</span><span class="record-category">${rec.category_name || '未分类'}</span></div><div class="record-date">${rec.date}</div></div><div style="display:flex; align-items:center;"><span class="record-amount ${amountClass}">${sign} ¥ ${Math.abs(rec.amount).toFixed(2)}</span><button class="delete-btn" data-id="${rec.id}"><i class="fas fa-trash-alt"></i></button></div></li>`;
+            }
+            listEl.innerHTML = html;
+            document.querySelectorAll('.delete-btn').forEach(btn => {
+                btn.onclick = async () => {
+                    const id = btn.getAttribute('data-id');
+                    if (confirm('删除该记录？')) {
+                        try { await authFetch(`${API_BASE}/records/${id}`, { method: 'DELETE' }); await refreshAll(); } catch(e) { alert('删除失败'); }
+                    }
+                };
+            });
+        } catch(e) { console.warn(e); }
+    }
+
+    async function loadStats() {
+        if (!token) { document.getElementById('totalIncome').innerText = '¥ 0'; document.getElementById('totalExpense').innerText = '¥ 0'; document.getElementById('totalBalance').innerText = '¥ 0'; return; }
+        try {
+            const res = await authFetch(`${API_BASE}/stats`);
+            const data = await res.json();
+            document.getElementById('totalIncome').innerText = `¥ ${Number(data.totalIncome).toFixed(2)}`;
+            document.getElementById('totalExpense').innerText = `¥ ${Number(data.totalExpense).toFixed(2)}`;
+            document.getElementById('totalBalance').innerText = `¥ ${Number(data.balance).toFixed(2)}`;
+        } catch(e) { console.warn(e); }
+    }
+
+    async function loadMonthlyChart() {
+        if (!token || !chartInstance) return;
+        try {
+            const res = await authFetch(`${API_BASE}/statistics/monthly`);
+            const data = await res.json();
+            const months = data.map(item => item.month);
+            const incomes = data.map(item => Number(item.income));
+            const expenses = data.map(item => Number(item.expense));
+            chartInstance.setOption({ tooltip: { trigger: 'axis' }, xAxis: { type: 'category', data: months }, yAxis: { type: 'value', name: '金额 (¥)' }, series: [{ name: '收入', type: 'line', data: incomes, smooth: true, color: '#2b9348' }, { name: '支出', type: 'line', data: expenses, smooth: true, color: '#d62828' }], legend: { data: ['收入', '支出'] } });
+        } catch(e) { console.warn(e); }
+    }
+
+    async function refreshAll() {
+        if (!token) return;
+        const filterVal = document.getElementById('filterCategory').value;
+        await loadRecords(filterVal);
+        await loadStats();
+        await loadMonthlyChart();
+    }
+
+    async function addRecord() {
+        if (!token) { alert('请先登录'); return; }
+        const description = document.getElementById('descInput').value.trim();
+        const amount = parseFloat(document.getElementById('amountInput').value);
+        const type = document.getElementById('typeSelect').value;
+        const category_id = document.getElementById('categorySelect').value;
+        let date = document.getElementById('dateInput').value;
+        if (!description) { alert('请填写描述'); return; }
+        if (isNaN(amount) || amount <= 0) { alert('金额必须大于0'); return; }
+        if (!category_id) { alert('请选择分类'); return; }
+        if (!date) date = new Date().toISOString().slice(0,10);
+        try {
+            const res = await authFetch(`${API_BASE}/records`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ description, amount, type, date, category_id }) });
+            if (res.ok) {
+                document.getElementById('descInput').value = '';
+                document.getElementById('amountInput').value = '';
+                document.getElementById('typeSelect').value = 'expense';
+                document.getElementById('categorySelect').value = '';
+                document.getElementById('dateInput').value = new Date().toISOString().slice(0,10);
+                await refreshAll();
+            } else { alert('添加失败'); }
+        } catch(e) { alert('请先登录'); }
+    }
+
+    async function handleAuth() {
+        if (isProcessing) return;
+        const username = document.getElementById('loginUsername').value.trim();
+        const password = document.getElementById('loginPassword').value;
+        if (!username || !password) { document.getElementById('loginMessage').innerText = '请输入手机号和密码'; return; }
+        isProcessing = true;
+        const submitBtn = document.getElementById('submitBtn');
+        const originalText = submitBtn.innerText;
+        submitBtn.disabled = true;
+        submitBtn.innerText = isLogin ? '登录中...' : '注册中...';
+        try {
+            if (isLogin) {
+                const res = await fetch(`${API_BASE}/login`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username, password }) });
+                const data = await res.json();
+                if (!res.ok) { document.getElementById('loginMessage').innerText = data.error || '登录失败'; isProcessing = false; submitBtn.disabled = false; submitBtn.innerText = originalText; return; }
+                setToken(data.token);
+                currentUser = data.username;
+                isProcessing = false;
+                const userArea = document.getElementById('userArea');
+                userArea.innerHTML = `<span class="username-display">${escapeHtml(currentUser)}</span><button id="logoutBtn" class="logout-btn">退出</button><button id="deleteAccountBtn" class="delete-account-btn">注销账号</button>`;
+                document.getElementById('logoutBtn').onclick = () => { logout(); };
+                document.getElementById('deleteAccountBtn').onclick = () => { deleteAccount(); };
+                closeLoginOverlay();
+                await loadCategories();
+                await refreshAll();
+                const today = new Date().toISOString().slice(0,10);
+                if (!document.getElementById('dateInput').value) document.getElementById('dateInput').value = today;
+            } else {
+                const phone = username;
+                const pwd = password;
+                const phoneRegex = /^1[3-9]\d{9}$/;
+                if (!phoneRegex.test(phone)) { document.getElementById('loginMessage').innerText = '请输入有效的11位手机号码'; isProcessing = false; submitBtn.disabled = false; submitBtn.innerText = originalText; return; }
+                const { valid } = checkPasswordStrength(pwd);
+                if (!valid) { document.getElementById('loginMessage').innerText = '密码必须包含大写字母、小写字母、数字和特殊符号'; isProcessing = false; submitBtn.disabled = false; submitBtn.innerText = originalText; return; }
+                const res = await fetch(`${API_BASE}/register`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username: phone, password: pwd }) });
+                const data = await res.json();
+                if (!res.ok) {
+                    if (res.status === 409) {
+                        document.getElementById('loginMessage').innerHTML = '<span style="color:#d62828;">该手机号已注册，请直接登录</span>';
+                        setTimeout(() => {
+                            isLogin = true;
+                            document.getElementById('formTitle').innerText = '登录';
+                            document.getElementById('submitBtn').innerText = '登录';
+                            document.getElementById('switchMode').innerText = '没有账号？立即注册';
+                            document.getElementById('loginPassword').value = '';
+                            document.getElementById('passwordHint').innerHTML = '';
+                            document.getElementById('loginMessage').innerHTML = '';
+                            document.getElementById('loginPassword').removeEventListener('input', updatePasswordHint);
+                            submitBtn.disabled = false;
+                            submitBtn.innerText = '登录';
+                            isProcessing = false;
+                        }, 1500);
+                    } else { document.getElementById('loginMessage').innerText = data.error || '注册失败'; isProcessing = false; submitBtn.disabled = false; submitBtn.innerText = originalText; }
+                    return;
+                }
+                document.getElementById('loginMessage').innerHTML = '<span style="color:#2b9348;">✓ 注册成功，请登录</span>';
+                setTimeout(() => {
+                    isLogin = true;
+                    document.getElementById('formTitle').innerText = '登录';
+                    document.getElementById('submitBtn').innerText = '登录';
+                    document.getElementById('switchMode').innerText = '没有账号？立即注册';
+                    document.getElementById('loginPassword').value = '';
+                    document.getElementById('passwordHint').innerHTML = '';
+                    document.getElementById('loginMessage').innerHTML = '';
+                    document.getElementById('loginPassword').removeEventListener('input', updatePasswordHint);
+                    submitBtn.disabled = false;
+                    submitBtn.innerText = '登录';
+                    isProcessing = false;
+                }, 1500);
+            }
+        } catch(err) { console.error(err); document.getElementById('loginMessage').innerText = '网络错误'; isProcessing = false; submitBtn.disabled = false; submitBtn.innerText = originalText; }
+    }
+
+    function logout() {
+        clearToken();
+        currentUser = null;
+        const userArea = document.getElementById('userArea');
+        userArea.innerHTML = `<button id="loginBtn" class="login-btn">登录</button>`;
+        const newLoginBtn = document.getElementById('loginBtn');
+        if (newLoginBtn) newLoginBtn.onclick = () => { showLoginOverlay(); };
+        const amountInput = document.getElementById('amountInput');
+        amountInput.value = '';
+        amountInput.placeholder = '0.00';
+        amountInput.setAttribute('readonly', true);
+        document.getElementById('totalIncome').innerText = '¥ 0';
+        document.getElementById('totalExpense').innerText = '¥ 0';
+        document.getElementById('totalBalance').innerText = '¥ 0';
+        document.getElementById('recordsList').innerHTML = '<li class="empty-state">请先登录以查看数据</li>';
+        if (chartInstance) chartInstance.clear();
+        const categorySelect = document.getElementById('categorySelect');
+        const filterCat = document.getElementById('filterCategory');
+        categorySelect.innerHTML = '<option value="">选择分类</option>';
+        filterCat.innerHTML = '<option value="">全部分类</option>';
+        categories = [];
+        isProcessing = false;
+        closeLoginOverlay();
+    }
+
+    async function deleteAccount() {
+        if (!confirm('⚠️ 注销账号将永久删除您所有的记账数据，且不可恢复。确定要继续吗？')) return;
+        try {
+            const res = await authFetch(`${API_BASE}/user`, { method: 'DELETE' });
+            if (res.ok) { alert('账号已注销'); logout(); } else { const data = await res.json(); alert(data.error || '注销失败'); }
+        } catch (err) { console.error(err); alert('网络错误，请稍后重试'); }
+    }
+
+    function showLoginOverlay() {
+        isProcessing = false;
+        const submitBtn = document.getElementById('submitBtn');
+        submitBtn.disabled = false;
+        submitBtn.innerText = '登录';
+        isLogin = true;
+        document.getElementById('formTitle').innerText = '登录';
+        document.getElementById('switchMode').innerText = '没有账号？立即注册';
+        document.getElementById('loginUsername').value = '';
+        document.getElementById('loginPassword').value = '';
+        document.getElementById('passwordHint').innerHTML = '';
+        document.getElementById('loginMessage').innerHTML = '';
+        document.getElementById('loginOverlay').classList.remove('hidden');
+        document.getElementById('loginPassword').removeEventListener('input', updatePasswordHint);
+        document.getElementById('loginPassword').addEventListener('input', updatePasswordHint);
+    }
+
+    function switchMode() {
+        isLogin = !isLogin;
+        document.getElementById('formTitle').innerText = isLogin ? '登录' : '注册';
+        document.getElementById('submitBtn').innerText = isLogin ? '登录' : '注册';
+        document.getElementById('switchMode').innerText = isLogin ? '没有账号？立即注册' : '已有账号？去登录';
+        document.getElementById('loginMessage').innerHTML = '';
+        document.getElementById('passwordHint').innerHTML = '';
+        if (!isLogin) document.getElementById('loginPassword').addEventListener('input', updatePasswordHint);
+        else document.getElementById('loginPassword').removeEventListener('input', updatePasswordHint);
+    }
+
+    function escapeHtml(str) {
+        if (!str) return '';
+        return str.replace(/[&<>]/g, function(m) {
+            if (m === '&') return '&amp;';
+            if (m === '<') return '&lt;';
+            if (m === '>') return '&gt;';
+            return m;
+        });
+    }
+
+    window.onload = () => {
+        chartInstance = echarts.init(document.getElementById('trendChart'));
+        chartInstance.clear();
+        const amountInput = document.getElementById('amountInput');
+        amountInput.value = '';
+        amountInput.placeholder = '0.00';
+        setTimeout(() => { if (amountInput) amountInput.value = ''; }, 50);
+        const savedToken = getToken();
+        if (savedToken) {
+            token = savedToken;
+            fetch(`${API_BASE}/stats`, { headers: { 'Authorization': `Bearer ${token}` } }).then(res => { if (res.ok) return res.json(); else throw new Error('invalid'); }).then(() => { logout(); showLoginOverlay(); }).catch(() => { logout(); });
+        } else { logout(); }
+        document.getElementById('addRecordBtn').onclick = addRecord;
+        document.getElementById('refreshBtn').onclick = () => { if(token) refreshAll(); else alert('请先登录'); };
+        document.getElementById('filterCategory').onchange = () => { if(token) loadRecords(document.getElementById('filterCategory').value); };
+        document.getElementById('submitBtn').onclick = handleAuth;
+        document.getElementById('switchMode').onclick = switchMode;
+        document.getElementById('closeLoginBtn').onclick = closeLoginOverlay;
+        const loginBtn = document.getElementById('loginBtn');
+        if (loginBtn) loginBtn.onclick = () => showLoginOverlay();
+    };
+</script>
+</body>
+</html>
