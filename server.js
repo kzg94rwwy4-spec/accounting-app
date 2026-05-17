@@ -7,17 +7,18 @@ const jwt = require('jsonwebtoken');
 
 const app = express();
 const port = 3000;
-const SECRET_KEY = 'Wuyi1998.1014'; // 请修改为随机字符串
+const SECRET_KEY = process.env.SECRET_KEY || 'Wuyi1998.1014'; // 请修改为随机字符串
 
 app.use(cors());
 app.use(bodyParser.json());
 
 // 数据库连接池
 const pool = mysql.createPool({
-    host: 'localhost',
-    user: 'root',
-    password: 'Wuyi1998.1014',   // 修改为实际密码
-    database: 'accounting',
+    host: process.env.MYSQL_HOST || 'localhost',
+    user: process.env.MYSQL_USER || 'root',
+    password: process.env.MYSQL_PASSWORD || 'Wuyi1998.1014',
+    database: process.env.MYSQL_DATABASE || 'accounting',
+    port: process.env.MYSQL_PORT || 3306,
     waitForConnections: true,
     connectionLimit: 10,
     queueLimit: 0
